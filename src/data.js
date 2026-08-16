@@ -11,6 +11,16 @@ export const CHANNEL_LABEL = { instagram: "Instagram", facebook: "Facebook", wha
 export const MONTHS = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ"];
 export const WEEKDAYS = ["dom","seg","ter","qua","qui","sex","sáb"];
 
+export const NAV_ITEMS = [
+  { id: "dashboard", label: "Painel", icon: "🏠" },
+  { id: "planejamento", label: "Planejamento", icon: "🧭" },
+  { id: "redes", label: "Redes Sociais", icon: "📱" },
+  { id: "site", label: "Site Oficial", icon: "🌐" },
+  { id: "fotosia", label: "Fotos com IA", icon: "✨" },
+  { id: "fotospro", label: "Fotos Profissionais", icon: "📷" },
+  { id: "videos", label: "Vídeos", icon: "🎬" },
+];
+
 export const DEFAULT_DELIVERABLES = [
   { id:"d1", name:"Planejamento de conteúdos", note:"Base estratégica, narrativa e posicionamento", target:"2026-08-16", recurring:true, status:"andamento" },
   { id:"d2", name:"Gestão de Redes Sociais", note:"Instagram, Facebook e Comunidade WhatsApp", target:"2026-08-16", recurring:true, status:"andamento" },
@@ -31,6 +41,7 @@ export const GALLERY_LABELS = { estudio: "Estúdio", rua: "Fotos de rua", evento
 export const DELIV_VIEW_MAP = { d1: "planejamento", d2: "redes", d3: "site", d4: "fotosia", d5: "fotospro", d6: "videos" };
 
 export const VIEW_TITLES = {
+  dashboard: "Painel",
   planejamento: "Planejamento de conteúdos",
   redes: "Gestão de Redes Sociais",
   site: "Site Oficial",

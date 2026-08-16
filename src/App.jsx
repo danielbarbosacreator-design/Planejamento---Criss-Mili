@@ -4,7 +4,7 @@ import {
   VIEW_TITLES,
 } from "./data.js";
 import LoginScreen from "./components/LoginScreen.jsx";
-import Header from "./components/Header.jsx";
+import Sidebar from "./components/Sidebar.jsx";
 import PhaseBar from "./components/PhaseBar.jsx";
 import Stats from "./components/Stats.jsx";
 import Deliverables from "./components/Deliverables.jsx";
@@ -13,6 +13,7 @@ import Calendar from "./components/Calendar.jsx";
 import ContentModal from "./components/ContentModal.jsx";
 import AccessModal from "./components/AccessModal.jsx";
 import PlanViewer from "./components/PlanViewer.jsx";
+import TopBar from "./components/TopBar.jsx";
 import Planejamento from "./components/views/Planejamento.jsx";
 import Redes from "./components/views/Redes.jsx";
 import Site from "./components/views/Site.jsx";
@@ -52,6 +53,7 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
   const [accessOpen, setAccessOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -156,8 +158,8 @@ export default function App() {
 
   return (
     <div id="appScreen" style={{ display: "block" }}>
-      <div className="wrap">
-        <Header
+      <div className="app-shell">
+        <Sidebar
           photo={state.photo}
           onPhotoChange={(dataUrl) => setState((s) => ({ ...s, photo: dataUrl }))}
           currentUser={currentUser}
@@ -165,87 +167,109 @@ export default function App() {
             localStorage.removeItem(USER_KEY);
             setCurrentUser(null);
           }}
+          view={view}
+          onNavigate={(v) => (v === "dashboard" ? goToDashboard() : goToView(v))}
           onOpenPlan={() => setPlanOpen(true)}
           onOpenAccess={() => setAccessOpen(true)}
+          mobileOpen={mobileNavOpen}
+          onCloseMobile={() => setMobileNavOpen(false)}
         />
 
-        {view !== "dashboard" && (
-          <div className="subnav-back show">
-            <button className="btn btn-ghost" onClick={goToDashboard}>← Voltar ao painel</button>
-            <span className="subnav-title">{VIEW_TITLES[view] || ""}</span>
-          </div>
-        )}
+        <div className="app-main">
+          <TopBar currentUser={currentUser} onMobileMenu={() => setMobileNavOpen(true)} />
 
-        {view === "dashboard" && (
-          <div id="view-dashboard" className="active">
-            <PhaseBar />
-            <Stats items={state.items} />
+          <div className="app-main-inner">
+            {view === "dashboard" && (
+              <div id="view-dashboard" className="active">
+                <div className="dashboard-greeting">
+                  <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: "0 0 6px" }}>Overview</h1>
+                  <p style={{ color: "#6B7280", margin: 0, fontSize: 13 }}>Painel de acompanhamento e planejamento da campanha.</p>
+                </div>
 
-            <div className="section-title">Entregáveis contratados</div>
-            <Deliverables
-              deliverables={state.deliverables}
-              isClient={isClient}
-              onOpen={goToView}
-              onFieldChange={(id, field, value) => {
-                setState((s) => ({
-                  ...s,
-                  deliverables: s.deliverables.map((d) => (d.id === id ? { ...d, [field]: value } : d)),
-                }));
-              }}
-            />
+                <div className="dash-grid">
+                  <div className="dash-col-main">
+                    <div className="section-card" style={{ padding: "24px" }}>
+                      <div className="clean-title">Progresso da Campanha</div>
+                      <PhaseBar />
+                    </div>
 
-            <div className="section-title" style={{ marginTop: 30, display: "flex", alignItems: "center", gap: 10 }}>
-              Calendário de conteúdo
-            </div>
-            <Toolbar
-              activeFilter={activeFilter}
-              onFilterChange={setActiveFilter}
-              onReset={resetPlan}
-              onAdd={() => openModal(null)}
-              isClient={isClient}
-            />
-            <Calendar
-              items={state.items}
-              activeFilter={activeFilter}
-              isClient={isClient}
-              onEdit={openModal}
-              onCycleStatus={cycleStatus}
-              onCycleApproval={cycleApproval}
-            />
-          </div>
-        )}
+                    <div className="stats-row">
+                      <Stats items={state.items} />
+                    </div>
+                  </div>
 
-        {view === "planejamento" && <div className="deliv-view active"><Planejamento onOpenPlanViewer={() => setPlanOpen(true)} /></div>}
-        {view === "redes" && <div className="deliv-view active"><Redes items={state.items} isClient={isClient} onEdit={openModal} /></div>}
-        {view === "site" && (
-          <div className="deliv-view active">
-            <Site siteUrl={state.siteUrl} isClient={isClient} onSave={(url) => setState((s) => ({ ...s, siteUrl: url }))} />
+                  <div className="dash-col-side1">
+                    <div className="section-card" style={{ padding: "24px", height: "100%" }}>
+                      <div className="clean-title">Entregáveis</div>
+                      <Deliverables
+                        deliverables={state.deliverables}
+                        isClient={isClient}
+                        onOpen={goToView}
+                        onFieldChange={(id, field, value) => {
+                          setState((s) => ({
+                            ...s,
+                            deliverables: s.deliverables.map((d) => (d.id === id ? { ...d, [field]: value } : d)),
+                          }));
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="section-card" style={{ padding: "24px", marginTop: "20px" }}>
+                  <div className="clean-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>Calendário de conteúdo</span>
+                    <Toolbar
+                      activeFilter={activeFilter}
+                      onFilterChange={setActiveFilter}
+                      onReset={resetPlan}
+                      onAdd={() => openModal(null)}
+                      isClient={isClient}
+                    />
+                  </div>
+                  <Calendar
+                    items={state.items}
+                    activeFilter={activeFilter}
+                    isClient={isClient}
+                    onEdit={openModal}
+                    onCycleStatus={cycleStatus}
+                    onCycleApproval={cycleApproval}
+                  />
+                </div>
+              </div>
+            )}
+
+            {view === "planejamento" && <div className="deliv-view active section-card"><Planejamento onOpenPlanViewer={() => setPlanOpen(true)} /></div>}
+            {view === "redes" && <div className="deliv-view active section-card"><Redes items={state.items} isClient={isClient} onEdit={openModal} /></div>}
+            {view === "site" && (
+              <div className="deliv-view active section-card">
+                <Site siteUrl={state.siteUrl} isClient={isClient} onSave={(url) => setState((s) => ({ ...s, siteUrl: url }))} />
+              </div>
+            )}
+            {view === "fotosia" && (
+              <div className="deliv-view active section-card">
+                <FotosIA
+                  galleries={state.galleries.fotosIA}
+                  isClient={isClient}
+                  onAdd={(cat, urls) => addGalleryPhotos("fotosia", cat, urls)}
+                  onRemove={(cat, idx) => removeGalleryPhoto("fotosia", cat, idx)}
+                />
+              </div>
+            )}
+            {view === "fotospro" && (
+              <div className="deliv-view active section-card">
+                <FotosPro
+                  photos={state.galleries.fotosPro}
+                  isClient={isClient}
+                  onAdd={(urls) => addGalleryPhotos("fotospro", null, urls)}
+                  onRemove={(idx) => removeGalleryPhoto("fotospro", null, idx)}
+                />
+              </div>
+            )}
+            {view === "videos" && <div className="deliv-view active section-card"><Videos items={state.items} isClient={isClient} onEdit={openModal} /></div>}
           </div>
-        )}
-        {view === "fotosia" && (
-          <div className="deliv-view active">
-            <FotosIA
-              galleries={state.galleries.fotosIA}
-              isClient={isClient}
-              onAdd={(cat, urls) => addGalleryPhotos("fotosia", cat, urls)}
-              onRemove={(cat, idx) => removeGalleryPhoto("fotosia", cat, idx)}
-            />
-          </div>
-        )}
-        {view === "fotospro" && (
-          <div className="deliv-view active">
-            <FotosPro
-              photos={state.galleries.fotosPro}
-              isClient={isClient}
-              onAdd={(urls) => addGalleryPhotos("fotospro", null, urls)}
-              onRemove={(idx) => removeGalleryPhoto("fotospro", null, idx)}
-            />
-          </div>
-        )}
-        {view === "videos" && <div className="deliv-view active"><Videos items={state.items} isClient={isClient} onEdit={openModal} /></div>}
+        </div>
       </div>
-
-      <button className="plan-fab" onClick={() => setPlanOpen(true)}>📄 Ver Plano Estratégico / Entregáveis</button>
 
       <PlanViewer open={planOpen} onClose={() => setPlanOpen(false)} />
       <AccessModal
