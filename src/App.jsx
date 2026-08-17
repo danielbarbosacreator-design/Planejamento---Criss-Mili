@@ -7,7 +7,6 @@ import LoginScreen from "./components/LoginScreen.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import PhaseBar from "./components/PhaseBar.jsx";
 import Stats from "./components/Stats.jsx";
-import Deliverables from "./components/Deliverables.jsx";
 import Toolbar from "./components/Toolbar.jsx";
 import Calendar from "./components/Calendar.jsx";
 import ContentModal from "./components/ContentModal.jsx";
@@ -51,6 +50,7 @@ export default function App() {
   const [view, setView] = useState("dashboard");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [newItemDate, setNewItemDate] = useState(null);
   const [accessOpen, setAccessOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -91,11 +91,18 @@ export default function App() {
   }
   function openModal(id) {
     setEditingId(id);
+    setNewItemDate(null);
+    setModalOpen(true);
+  }
+  function openModalForDate(date) {
+    setEditingId(null);
+    setNewItemDate(date);
     setModalOpen(true);
   }
   function closeModal() {
     setModalOpen(false);
     setEditingId(null);
+    setNewItemDate(null);
   }
   function saveItem(data, isNew) {
     if (isNew) {
@@ -186,33 +193,14 @@ export default function App() {
                   <p style={{ color: "#6B7280", margin: 0, fontSize: 13 }}>Painel de acompanhamento e planejamento da campanha.</p>
                 </div>
 
-                <div className="dash-grid">
-                  <div className="dash-col-main">
-                    <div className="section-card" style={{ padding: "24px" }}>
-                      <div className="clean-title">Progresso da Campanha</div>
-                      <PhaseBar />
-                    </div>
-
-                    <div className="stats-row">
-                      <Stats items={state.items} />
-                    </div>
+                <div className="dash-col-main">
+                  <div className="section-card" style={{ padding: "24px" }}>
+                    <div className="clean-title">Progresso da Campanha</div>
+                    <PhaseBar />
                   </div>
 
-                  <div className="dash-col-side1">
-                    <div className="section-card" style={{ padding: "24px", height: "100%" }}>
-                      <div className="clean-title">Entregáveis</div>
-                      <Deliverables
-                        deliverables={state.deliverables}
-                        isClient={isClient}
-                        onOpen={goToView}
-                        onFieldChange={(id, field, value) => {
-                          setState((s) => ({
-                            ...s,
-                            deliverables: s.deliverables.map((d) => (d.id === id ? { ...d, [field]: value } : d)),
-                          }));
-                        }}
-                      />
-                    </div>
+                  <div className="stats-row">
+                    <Stats items={state.items} />
                   </div>
                 </div>
 
@@ -232,6 +220,7 @@ export default function App() {
                     activeFilter={activeFilter}
                     isClient={isClient}
                     onEdit={openModal}
+                    onAddOnDate={openModalForDate}
                     onCycleStatus={cycleStatus}
                     onCycleApproval={cycleApproval}
                   />
@@ -284,6 +273,7 @@ export default function App() {
       <ContentModal
         open={modalOpen}
         editingItem={editingItem}
+        newItemDate={newItemDate}
         isClient={isClient}
         currentUser={currentUser}
         onSave={saveItem}

@@ -37,13 +37,13 @@ function UploadBox({ kind, label, dims, image, isClient, onChange, onRemove }) {
   );
 }
 
-export default function ContentModal({ open, editingItem, isClient, currentUser, onSave, onDelete, onCancel }) {
+export default function ContentModal({ open, editingItem, newItemDate, isClient, currentUser, onSave, onDelete, onCancel }) {
   const [form, setForm] = useState(EMPTY_ITEM);
 
   useEffect(() => {
     if (!open) return;
-    setForm(editingItem ? { ...editingItem } : { ...EMPTY_ITEM });
-  }, [open, editingItem]);
+    setForm(editingItem ? { ...editingItem } : { ...EMPTY_ITEM, date: newItemDate || EMPTY_ITEM.date });
+  }, [open, editingItem, newItemDate]);
 
   if (!open) return null;
   const isNew = !editingItem;
