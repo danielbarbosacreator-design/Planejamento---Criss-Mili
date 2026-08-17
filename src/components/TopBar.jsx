@@ -42,7 +42,7 @@ export default function TopBar({ currentUser, isClient, items, onMobileMenu, onO
     }
     return items
       .filter((i) => i.approval === "reprovado")
-      .map((i) => ({ id: i.id, text: `Reprovado pelo cliente: "${i.title}"${i.approvalNote ? " — " + i.approvalNote : ""}` }));
+      .map((i) => ({ id: i.id, text: `Reprovado pelo cliente: "${i.title}"${i.approvalNote ? ". " + i.approvalNote : ""}` }));
   }, [items, isClient]);
 
   function openResult(id) {

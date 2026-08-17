@@ -21,6 +21,7 @@ export default function LoginScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -58,7 +59,7 @@ export default function LoginScreen() {
       <div className="login-card">
         <div className="login-intro">
           <h1>Sistema de Gestão de Campanha</h1>
-          <div className="login-lede">Cris Millis — Pré-candidata a Deputada Estadual SC · Partido Novo · São Francisco do Sul. Um só lugar pra equipe e candidata acompanharem tudo o que está acontecendo na campanha.</div>
+          <div className="login-lede">Cris Millis, pré-candidata a Deputada Estadual SC · Partido Novo · São Francisco do Sul. Um só lugar pra equipe e candidata acompanharem tudo o que está acontecendo na campanha.</div>
           <ul className="login-features">
             {FEATURES.map(([icon, text]) => (
               <li key={text}><span className="lf-icon">{icon}</span><span>{text}</span></li>
@@ -91,14 +92,28 @@ export default function LoginScreen() {
           </div>
           <div className="form-row">
             <label>Senha</label>
-            <input
-              className="field-input"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
-              placeholder="••••••••"
-            />
+            <div className="login-password-wrap">
+              <input
+                className="field-input"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                className="login-password-toggle"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Esconder senha" : "Mostrar senha"}
+              >
+                {showPassword ? (
+                  <svg viewBox="0 0 24 24" width="17" height="17" stroke="currentColor" strokeWidth="2" fill="none"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" width="17" height="17" stroke="currentColor" strokeWidth="2" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                )}
+              </button>
+            </div>
           </div>
 
           {error && <div className="access-warning" style={{ marginBottom: 12 }}>{error}</div>}
@@ -114,7 +129,7 @@ export default function LoginScreen() {
             style={{ marginTop: 12, background: "none", border: "none", fontSize: 13, cursor: "pointer", color: "#6B7280" }}
             onClick={() => { setMode(mode === "entrar" ? "criar" : "entrar"); setError(""); setInfo(""); }}
           >
-            {mode === "entrar" ? "Primeiro acesso? Criar conta" : "Já tenho conta — entrar"}
+            {mode === "entrar" ? "Primeiro acesso? Criar conta" : "Já tenho conta, entrar"}
           </button>
         </div>
       </div>

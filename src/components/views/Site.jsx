@@ -5,7 +5,7 @@ export default function Site({ siteUrl, isClient, onSave }) {
 
   return (
     <>
-      <div className="view-intro">Assim que o site oficial estiver no ar, cole o link aqui — ele fica salvo e disponível pra toda a equipe.</div>
+      <div className="view-intro">Assim que o site oficial estiver no ar, cole o link aqui. Ele fica salvo e disponível pra toda a equipe.</div>
       <div className="site-box">
         <div className="form-row">
           <label>Link do site oficial</label>

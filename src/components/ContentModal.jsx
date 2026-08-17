@@ -97,7 +97,7 @@ export default function ContentModal({ open, editingItem, newItemDate, isClient,
         </div>
         <div className="form-row">
           <label>Título</label>
-          <input className="field-input" type="text" value={form.title} disabled={isClient} onChange={(e) => set("title", e.target.value)} placeholder="Ex: Vídeo — proposta 1 explicada" />
+          <input className="field-input" type="text" value={form.title} disabled={isClient} onChange={(e) => set("title", e.target.value)} placeholder="Ex: Vídeo, proposta 1 explicada" />
         </div>
         <div className="form-row">
           <label>Roteiro / descrição</label>
@@ -109,7 +109,7 @@ export default function ContentModal({ open, editingItem, newItemDate, isClient,
         </div>
         <div className="form-row">
           <label>Texto que vai na imagem</label>
-          <input className="field-input" type="text" value={form.imageText} disabled={isClient} onChange={(e) => set("imageText", e.target.value)} placeholder="Ex: VOTO 30 — CRIS MILLIS" />
+          <input className="field-input" type="text" value={form.imageText} disabled={isClient} onChange={(e) => set("imageText", e.target.value)} placeholder="Ex: VOTO 30, CRIS MILLIS" />
         </div>
         <div className="form-row">
           <label>Artes</label>

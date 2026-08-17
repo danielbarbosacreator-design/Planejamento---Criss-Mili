@@ -3,7 +3,6 @@ import { supabase } from "./lib/supabaseClient.js";
 import {
   loadMyContext, loadCampaignBundle, logActivity,
   createContentItem, updateContentItem, deleteContentItem, recordApproval,
-  addGalleryPhotos, removeGalleryPhoto,
   saveSiteUrl, saveCandidatePhoto, saveSocialAccounts,
 } from "./lib/campaignData.js";
 import LoginScreen from "./components/LoginScreen.jsx";
@@ -19,8 +18,6 @@ import TopBar from "./components/TopBar.jsx";
 import Planejamento from "./components/views/Planejamento.jsx";
 import Redes from "./components/views/Redes.jsx";
 import Site from "./components/views/Site.jsx";
-import FotosIA from "./components/views/FotosIA.jsx";
-import FotosPro from "./components/views/FotosPro.jsx";
 import Videos from "./components/views/Videos.jsx";
 
 function FullScreenMessage({ title, children }) {
@@ -200,36 +197,6 @@ export default function App() {
     window.scrollTo(0, 0);
   }
 
-  async function handleAddGalleryPhotos(group, cat, urls) {
-    try {
-      const rows = await addGalleryPhotos(campaign.id, group, cat, urls);
-      setBundle((b) => {
-        const galleries = { ...b.galleries };
-        const added = rows.map((r) => ({ id: r.id, url: r.url }));
-        if (group === "fotosia") galleries.fotosIA = { ...galleries.fotosIA, [cat]: [...galleries.fotosIA[cat], ...added] };
-        else galleries.fotosPro = [...galleries.fotosPro, ...added];
-        return { ...b, galleries };
-      });
-    } catch (e) {
-      alert("Não conseguimos salvar as fotos.");
-    }
-  }
-  async function handleRemoveGalleryPhoto(group, cat, idx) {
-    const photo = group === "fotosia" ? bundle.galleries.fotosIA[cat][idx] : bundle.galleries.fotosPro[idx];
-    if (!photo) return;
-    try {
-      await removeGalleryPhoto(photo.id);
-      setBundle((b) => {
-        const galleries = { ...b.galleries };
-        if (group === "fotosia") galleries.fotosIA = { ...galleries.fotosIA, [cat]: galleries.fotosIA[cat].filter((_, i) => i !== idx) };
-        else galleries.fotosPro = galleries.fotosPro.filter((_, i) => i !== idx);
-        return { ...b, galleries };
-      });
-    } catch (e) {
-      alert("Não conseguimos remover a foto.");
-    }
-  }
-
   async function handleSaveSiteUrl(url) {
     try {
       await saveSiteUrl(campaign.id, url);
@@ -290,6 +257,10 @@ export default function App() {
           <div className="app-main-inner">
             {view === "dashboard" && (
               <div id="view-dashboard" className="active">
+                <div className="dashboard-hero">
+                  <img src="/hero-banner.png" alt="" />
+                </div>
+
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "24px" }}>
                   <div className="dashboard-greeting">
                     <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: "0 0 6px" }}>Overview</h1>
@@ -332,26 +303,6 @@ export default function App() {
             {view === "site" && (
               <div className="deliv-view active section-card">
                 <Site siteUrl={campaign.site_url} isClient={isClient} onSave={handleSaveSiteUrl} />
-              </div>
-            )}
-            {view === "fotosia" && (
-              <div className="deliv-view active section-card">
-                <FotosIA
-                  galleries={bundle.galleries.fotosIA}
-                  isClient={isClient}
-                  onAdd={(cat, urls) => handleAddGalleryPhotos("fotosia", cat, urls)}
-                  onRemove={(cat, idx) => handleRemoveGalleryPhoto("fotosia", cat, idx)}
-                />
-              </div>
-            )}
-            {view === "fotospro" && (
-              <div className="deliv-view active section-card">
-                <FotosPro
-                  photos={bundle.galleries.fotosPro}
-                  isClient={isClient}
-                  onAdd={(urls) => handleAddGalleryPhotos("fotospro", null, urls)}
-                  onRemove={(idx) => handleRemoveGalleryPhoto("fotospro", null, idx)}
-                />
               </div>
             )}
             {view === "videos" && <div className="deliv-view active section-card"><Videos items={bundle.items} isClient={isClient} onEdit={openModal} /></div>}

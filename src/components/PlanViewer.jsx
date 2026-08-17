@@ -24,7 +24,7 @@ export default function PlanViewer({ open, onClose }) {
   return (
     <div className="plan-overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="plan-topbar">
-        <span>Plano Estratégico de Comunicação — Campanha Cris Millis 2026</span>
+        <span>Plano Estratégico de Comunicação: Campanha Cris Millis 2026</span>
         <button className="close-x" onClick={onClose}>✕</button>
       </div>
       <div className="plan-imgwrap">

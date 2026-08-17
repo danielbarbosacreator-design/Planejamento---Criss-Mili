@@ -26,10 +26,10 @@ export default function AccessModal({ open, accesses, onSave, onClose }) {
     <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal" style={{ width: 480 }}>
         <h3>🔐 Acessos das redes</h3>
-        <div className="access-warning">Fica salvo só neste navegador/dispositivo, sem criptografia. Não printe nem envie essa tela por WhatsApp — prefira compartilhar por um gerenciador de senhas.</div>
+        <div className="access-warning">Fica salvo só neste navegador/dispositivo, sem criptografia. Não printe nem envie essa tela por WhatsApp: prefira compartilhar por um gerenciador de senhas.</div>
 
         <div className="access-block">
-          <div className="access-block-title">📷 Instagram — @crismilli_</div>
+          <div className="access-block-title">📷 Instagram (@crismilli_)</div>
           <div className="form-row"><label>Usuário / e-mail</label><input className="field-input" type="text" value={ig.user} onChange={(e) => setIg({ ...ig, user: e.target.value })} /></div>
           <div className="form-row">
             <label>Senha</label>
