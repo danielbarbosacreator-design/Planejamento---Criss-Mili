@@ -11,7 +11,7 @@ export default function FotosIA({ galleries, isClient, onAdd, onRemove }) {
         <GallerySection
           key={cat}
           label={GALLERY_LABELS[cat]}
-          photos={galleries[cat]}
+          photos={galleries[cat].map((p) => p.url)}
           isClient={isClient}
           onAdd={(urls) => onAdd(cat, urls)}
           onRemove={(idx) => onRemove(cat, idx)}

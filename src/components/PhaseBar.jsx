@@ -1,4 +1,3 @@
-import { PHASES } from "../data.js";
 import { fmtDate, todayIso } from "../utils.js";
 
 const ICONS = [
@@ -7,22 +6,26 @@ const ICONS = [
   <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none"><polygon points="11 19 2 12 11 5 11 19"></polygon><path d="M22 12A10 10 0 0 0 12 2v20a10 10 0 0 0 10-10z"></path></svg>
 ];
 
-export default function PhaseBar() {
+function daysBetween(a, b) {
+  return (new Date(b + "T00:00:00") - new Date(a + "T00:00:00")) / 86400000;
+}
+
+// fases vêm do banco (campaign_phases) — a organização pode ter 1, 3 ou N fases
+export default function PhaseBar({ phases }) {
+  if (!phases || !phases.length) return null;
   const now = todayIso();
+  const first = phases[0].range[0];
+  const last = phases[phases.length - 1].range[1];
   let progress = 0;
-  if (now >= PHASES[0].range[0] && now <= PHASES[0].range[1]) progress = 15;
-  else if (now > PHASES[0].range[1] && now < PHASES[1].range[0]) progress = 33;
-  else if (now >= PHASES[1].range[0] && now <= PHASES[1].range[1]) progress = 50;
-  else if (now > PHASES[1].range[1] && now < PHASES[2].range[0]) progress = 66;
-  else if (now >= PHASES[2].range[0] && now <= PHASES[2].range[1]) progress = 85;
-  else if (now > PHASES[2].range[1]) progress = 100;
+  if (now >= last) progress = 100;
+  else if (now > first) progress = Math.round((daysBetween(first, now) / daysBetween(first, last)) * 100);
 
   return (
     <div className="phasebar-new">
       <div className="phase-line-bg"></div>
       <div className="phase-line-fill" style={{ width: `${progress}%` }}></div>
-      
-      {PHASES.map((ph, idx) => {
+
+      {phases.map((ph, idx) => {
         const active = now >= ph.range[0] && now <= ph.range[1];
         const done = now > ph.range[1];
         const d0 = fmtDate(ph.range[0]);

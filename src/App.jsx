@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
+import { supabase } from "./lib/supabaseClient.js";
 import {
-  STORAGE_KEY, USER_KEY, DEFAULT_ITEMS, DEFAULT_DELIVERABLES, DEFAULT_GALLERIES,
-  VIEW_TITLES,
-} from "./data.js";
+  loadMyContext, loadCampaignBundle, logActivity,
+  createContentItem, updateContentItem, deleteContentItem, recordApproval,
+  addGalleryPhotos, removeGalleryPhoto,
+  saveSiteUrl, saveCandidatePhoto, saveSocialAccounts,
+} from "./lib/campaignData.js";
 import LoginScreen from "./components/LoginScreen.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import PhaseBar from "./components/PhaseBar.jsx";
@@ -20,32 +23,22 @@ import FotosIA from "./components/views/FotosIA.jsx";
 import FotosPro from "./components/views/FotosPro.jsx";
 import Videos from "./components/views/Videos.jsx";
 
-function loadState() {
-  let s = null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) s = JSON.parse(raw);
-  } catch (e) { /* ignore malformed storage */ }
-  if (!s) s = { photo: null, items: DEFAULT_ITEMS, deliverables: DEFAULT_DELIVERABLES };
-  if (!s.siteUrl) s.siteUrl = "";
-  if (!s.galleries) s.galleries = JSON.parse(JSON.stringify(DEFAULT_GALLERIES));
-  if (!s.galleries.fotosIA) s.galleries.fotosIA = { estudio: [], rua: [], evento: [], saidaReuniao: [] };
-  if (!s.galleries.fotosPro) s.galleries.fotosPro = [];
-  if (!s.accesses) s.accesses = { ig: { user: "", pass: "" }, fb: { user: "", pass: "" } };
-  return s;
-}
-
-function loadUser() {
-  try {
-    return JSON.parse(localStorage.getItem(USER_KEY) || "null");
-  } catch (e) {
-    return null;
-  }
+function FullScreenMessage({ title, children }) {
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8, padding: 24, textAlign: "center" }}>
+      <h1 style={{ fontSize: 18, fontWeight: 700, color: "#111827", margin: 0 }}>{title}</h1>
+      {children}
+    </div>
+  );
 }
 
 export default function App() {
-  const [state, setState] = useState(loadState);
-  const [currentUser, setCurrentUser] = useState(loadUser);
+  const [session, setSession] = useState(undefined); // undefined = ainda checando, null = deslogado
+  const [profileName, setProfileName] = useState("");
+  const [ctx, setCtx] = useState(null); // { campaign, isClient, orgRole, campaignRole }
+  const [bundle, setBundle] = useState(null); // { phases, deliverables, items, galleries, accesses }
+  const [loadError, setLoadError] = useState("");
+
   const [activeFilter, setActiveFilter] = useState("all");
   const [view, setView] = useState("dashboard");
   const [modalOpen, setModalOpen] = useState(false);
@@ -56,42 +49,93 @@ export default function App() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
-  if (!currentUser) {
+  useEffect(() => {
+    if (!session) { setCtx(null); setBundle(null); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [{ data: profile }, myCtx] = await Promise.all([
+          supabase.from("profiles").select("full_name").eq("id", session.user.id).maybeSingle(),
+          loadMyContext(),
+        ]);
+        if (cancelled) return;
+        setProfileName(profile?.full_name || session.user.email);
+        setCtx(myCtx);
+        if (myCtx?.campaign) {
+          const b = await loadCampaignBundle(myCtx.campaign.id);
+          if (!cancelled) setBundle(b);
+        }
+      } catch (e) {
+        if (!cancelled) setLoadError("Não conseguimos carregar seus dados agora.");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session]);
+
+  if (session === undefined) return null;
+  if (!session) return <LoginScreen />;
+
+  if (loadError) {
     return (
-      <LoginScreen
-        onLogin={(user) => {
-          localStorage.setItem(USER_KEY, JSON.stringify(user));
-          setCurrentUser(user);
-        }}
-      />
+      <FullScreenMessage title="Não conseguimos carregar isso agora">
+        <button className="btn btn-primary" onClick={() => window.location.reload()}>Tentar novamente</button>
+      </FullScreenMessage>
     );
   }
-
-  const isClient = currentUser.role === "cliente";
-
-  function updateItem(id, patch) {
-    setState((s) => ({ ...s, items: s.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) }));
+  if (!ctx) return null;
+  if (!ctx.campaign) {
+    return (
+      <FullScreenMessage title="Sua conta ainda não tem acesso a nenhuma campanha">
+        <p style={{ color: "#6B7280", maxWidth: 360 }}>Peça pra um administrador da organização te convidar com seu e-mail ({session.user.email}).</p>
+        <button className="btn btn-ghost" onClick={() => supabase.auth.signOut()}>Sair</button>
+      </FullScreenMessage>
+    );
   }
-  function cycleStatus(id) {
+  if (!bundle) return null;
+
+  const { campaign, isClient } = ctx;
+  const currentUser = { name: profileName };
+  const phasesForBar = bundle.phases.map((p) => ({ id: p.key, label: p.name, range: [p.start_date, p.end_date] }));
+
+  function updateLocalItem(id, patch) {
+    setBundle((b) => ({ ...b, items: b.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) }));
+  }
+
+  async function cycleStatus(id) {
     const order = ["planejado", "producao", "publicado"];
-    const item = state.items.find((i) => i.id === id);
-    const idx = order.indexOf(item.status);
-    updateItem(id, { status: order[(idx + 1) % order.length] });
+    const item = bundle.items.find((i) => i.id === id);
+    const next = order[(order.indexOf(item.status) + 1) % order.length];
+    updateLocalItem(id, { status: next });
+    try {
+      await updateContentItem(campaign.id, bundle.phases, id, { ...item, status: next });
+      logActivity(campaign.id, campaign.organization_id, "updated", "content_item", id, { status: next });
+    } catch (e) {
+      updateLocalItem(id, { status: item.status });
+      alert("Não conseguimos salvar essa mudança.");
+    }
   }
-  function cycleApproval(id) {
+
+  async function cycleApproval(id) {
     const order = ["pendente", "aprovado", "reprovado"];
-    const item = state.items.find((i) => i.id === id);
-    const idx = order.indexOf(item.approval);
-    const patch = { approval: order[(idx + 1) % order.length] };
-    if (currentUser) patch.approvedBy = currentUser.name;
-    updateItem(id, patch);
+    const item = bundle.items.find((i) => i.id === id);
+    const next = order[(order.indexOf(item.approval) + 1) % order.length];
+    updateLocalItem(id, { approval: next });
+    try {
+      await recordApproval(campaign.id, id, next, item.approvalNote);
+      logActivity(campaign.id, campaign.organization_id, next === "pendente" ? "reset_approval" : next, "content_item", id, {});
+    } catch (e) {
+      updateLocalItem(id, { approval: item.approval });
+      alert("Não conseguimos salvar a aprovação.");
+    }
   }
+
   function handleLogout() {
-    localStorage.removeItem(USER_KEY);
-    setCurrentUser(null);
+    supabase.auth.signOut();
   }
   function openModal(id) {
     setEditingId(id);
@@ -108,31 +152,45 @@ export default function App() {
     setEditingId(null);
     setNewItemDate(null);
   }
-  function saveItem(data, isNew) {
-    if (isNew) {
-      const newItem = { ...data, id: "it" + Date.now(), approvedBy: null };
-      setState((s) => ({ ...s, items: [...s.items, newItem] }));
-    } else {
-      updateItem(editingId, data);
+
+  async function saveItem(data, isNew) {
+    try {
+      if (isNew) {
+        const newItem = await createContentItem(campaign.id, bundle.phases, data);
+        setBundle((b) => ({ ...b, items: [...b.items, newItem] }));
+        logActivity(campaign.id, campaign.organization_id, "created", "content_item", newItem.id, { title: newItem.title });
+      } else {
+        const original = bundle.items.find((i) => i.id === editingId);
+        const approvalChanged = original.approval !== data.approval;
+        if (!isClient) {
+          await updateContentItem(campaign.id, bundle.phases, editingId, data);
+        }
+        if (approvalChanged) {
+          await recordApproval(campaign.id, editingId, data.approval, data.approvalNote);
+        }
+        updateLocalItem(editingId, { ...data });
+        logActivity(campaign.id, campaign.organization_id, "updated", "content_item", editingId, {});
+      }
+    } catch (e) {
+      alert("Não conseguimos salvar. Tente de novo.");
+      return;
     }
     closeModal();
   }
-  function deleteItem() {
+
+  async function deleteItem() {
     if (!editingId) return;
-    setState((s) => ({ ...s, items: s.items.filter((i) => i.id !== editingId) }));
+    try {
+      await deleteContentItem(editingId);
+      setBundle((b) => ({ ...b, items: b.items.filter((i) => i.id !== editingId) }));
+      logActivity(campaign.id, campaign.organization_id, "deleted", "content_item", editingId, {});
+    } catch (e) {
+      alert("Não conseguimos excluir esse conteúdo.");
+      return;
+    }
     closeModal();
   }
-  function resetPlan() {
-    if (!window.confirm("Isso vai substituir todas as edições pelo plano padrão sugerido. Continuar?")) return;
-    setState((s) => ({
-      photo: s.photo,
-      items: JSON.parse(JSON.stringify(DEFAULT_ITEMS)),
-      deliverables: JSON.parse(JSON.stringify(DEFAULT_DELIVERABLES)),
-      siteUrl: s.siteUrl,
-      galleries: s.galleries,
-      accesses: s.accesses,
-    }));
-  }
+
   function goToView(v) {
     setView(v);
     window.scrollTo(0, 0);
@@ -142,37 +200,73 @@ export default function App() {
     window.scrollTo(0, 0);
   }
 
-  function addGalleryPhotos(group, cat, urls) {
-    setState((s) => {
-      const galleries = { ...s.galleries };
-      if (group === "fotosia") {
-        galleries.fotosIA = { ...galleries.fotosIA, [cat]: [...galleries.fotosIA[cat], ...urls] };
-      } else {
-        galleries.fotosPro = [...galleries.fotosPro, ...urls];
-      }
-      return { ...s, galleries };
-    });
+  async function handleAddGalleryPhotos(group, cat, urls) {
+    try {
+      const rows = await addGalleryPhotos(campaign.id, group, cat, urls);
+      setBundle((b) => {
+        const galleries = { ...b.galleries };
+        const added = rows.map((r) => ({ id: r.id, url: r.url }));
+        if (group === "fotosia") galleries.fotosIA = { ...galleries.fotosIA, [cat]: [...galleries.fotosIA[cat], ...added] };
+        else galleries.fotosPro = [...galleries.fotosPro, ...added];
+        return { ...b, galleries };
+      });
+    } catch (e) {
+      alert("Não conseguimos salvar as fotos.");
+    }
   }
-  function removeGalleryPhoto(group, cat, idx) {
-    setState((s) => {
-      const galleries = { ...s.galleries };
-      if (group === "fotosia") {
-        galleries.fotosIA = { ...galleries.fotosIA, [cat]: galleries.fotosIA[cat].filter((_, i) => i !== idx) };
-      } else {
-        galleries.fotosPro = galleries.fotosPro.filter((_, i) => i !== idx);
-      }
-      return { ...s, galleries };
-    });
+  async function handleRemoveGalleryPhoto(group, cat, idx) {
+    const photo = group === "fotosia" ? bundle.galleries.fotosIA[cat][idx] : bundle.galleries.fotosPro[idx];
+    if (!photo) return;
+    try {
+      await removeGalleryPhoto(photo.id);
+      setBundle((b) => {
+        const galleries = { ...b.galleries };
+        if (group === "fotosia") galleries.fotosIA = { ...galleries.fotosIA, [cat]: galleries.fotosIA[cat].filter((_, i) => i !== idx) };
+        else galleries.fotosPro = galleries.fotosPro.filter((_, i) => i !== idx);
+        return { ...b, galleries };
+      });
+    } catch (e) {
+      alert("Não conseguimos remover a foto.");
+    }
   }
 
-  const editingItem = editingId ? state.items.find((i) => i.id === editingId) : null;
+  async function handleSaveSiteUrl(url) {
+    try {
+      await saveSiteUrl(campaign.id, url);
+      setCtx((c) => ({ ...c, campaign: { ...c.campaign, site_url: url } }));
+    } catch (e) {
+      alert("Não conseguimos salvar o link do site.");
+    }
+  }
+
+  async function handlePhotoChange(dataUrl) {
+    try {
+      await saveCandidatePhoto(campaign.id, dataUrl);
+      setCtx((c) => ({ ...c, campaign: { ...c.campaign, candidate_photo_url: dataUrl } }));
+    } catch (e) {
+      alert("Não conseguimos salvar a foto.");
+    }
+  }
+
+  async function handleSaveAccesses(accesses) {
+    try {
+      await saveSocialAccounts(campaign.id, accesses);
+      setBundle((b) => ({ ...b, accesses }));
+      setAccessOpen(false);
+    } catch (e) {
+      alert("Não conseguimos salvar os acessos.");
+    }
+  }
+
+  const editingItem = editingId ? bundle.items.find((i) => i.id === editingId) : null;
 
   return (
     <div id="appScreen" style={{ display: "block" }}>
       <div className="app-shell">
         <Sidebar
-          photo={state.photo}
-          onPhotoChange={(dataUrl) => setState((s) => ({ ...s, photo: dataUrl }))}
+          campaign={campaign}
+          photo={campaign.candidate_photo_url}
+          onPhotoChange={handlePhotoChange}
           currentUser={currentUser}
           onLogout={handleLogout}
           view={view}
@@ -187,7 +281,7 @@ export default function App() {
           <TopBar
             currentUser={currentUser}
             isClient={isClient}
-            items={state.items}
+            items={bundle.items}
             onMobileMenu={() => setMobileNavOpen(true)}
             onOpenItem={openModal}
             onLogout={handleLogout}
@@ -201,20 +295,15 @@ export default function App() {
                     <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: "0 0 6px" }}>Overview</h1>
                     <p style={{ color: "#6B7280", margin: 0, fontSize: 13 }}>Painel de acompanhamento e planejamento da campanha.</p>
                   </div>
-                  <button className="btn-ghost" style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 8, padding: "8px 12px", background: "white", border: "1px solid #E5E7EB", fontSize: 12, fontWeight: 600 }}>
-                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" strokeWidth="2" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                    16 AGO - 4 OUT, 2026
-                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" strokeWidth="2" fill="none"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                  </button>
                 </div>
 
                 <div className="section-card" style={{ padding: "24px", marginBottom: "20px" }}>
                   <div className="clean-title" style={{ fontSize: 10, color: "#9CA3AF", letterSpacing: "1px", marginBottom: 20 }}>PROGRESSO DA CAMPANHA</div>
-                  <PhaseBar />
+                  <PhaseBar phases={phasesForBar} />
                 </div>
 
                 <div className="stats-row" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px", marginBottom: "20px" }}>
-                  <Stats items={state.items} />
+                  <Stats items={bundle.items} />
                 </div>
 
                 <div className="section-card" style={{ padding: "24px", marginTop: "20px" }}>
@@ -222,15 +311,15 @@ export default function App() {
                   <Toolbar
                     activeFilter={activeFilter}
                     onFilterChange={setActiveFilter}
-                    onReset={resetPlan}
                     onAdd={() => openModal(null)}
                     isClient={isClient}
                   />
                   <Calendar
-                    items={state.items}
+                    items={bundle.items}
                     activeFilter={activeFilter}
                     isClient={isClient}
                     onEdit={openModal}
+                    onAddOnDate={openModalForDate}
                     onCycleStatus={cycleStatus}
                     onCycleApproval={cycleApproval}
                   />
@@ -239,33 +328,33 @@ export default function App() {
             )}
 
             {view === "planejamento" && <div className="deliv-view active section-card"><Planejamento onOpenPlanViewer={() => setPlanOpen(true)} /></div>}
-            {view === "redes" && <div className="deliv-view active section-card"><Redes items={state.items} isClient={isClient} onEdit={openModal} /></div>}
+            {view === "redes" && <div className="deliv-view active section-card"><Redes items={bundle.items} isClient={isClient} onEdit={openModal} /></div>}
             {view === "site" && (
               <div className="deliv-view active section-card">
-                <Site siteUrl={state.siteUrl} isClient={isClient} onSave={(url) => setState((s) => ({ ...s, siteUrl: url }))} />
+                <Site siteUrl={campaign.site_url} isClient={isClient} onSave={handleSaveSiteUrl} />
               </div>
             )}
             {view === "fotosia" && (
               <div className="deliv-view active section-card">
                 <FotosIA
-                  galleries={state.galleries.fotosIA}
+                  galleries={bundle.galleries.fotosIA}
                   isClient={isClient}
-                  onAdd={(cat, urls) => addGalleryPhotos("fotosia", cat, urls)}
-                  onRemove={(cat, idx) => removeGalleryPhoto("fotosia", cat, idx)}
+                  onAdd={(cat, urls) => handleAddGalleryPhotos("fotosia", cat, urls)}
+                  onRemove={(cat, idx) => handleRemoveGalleryPhoto("fotosia", cat, idx)}
                 />
               </div>
             )}
             {view === "fotospro" && (
               <div className="deliv-view active section-card">
                 <FotosPro
-                  photos={state.galleries.fotosPro}
+                  photos={bundle.galleries.fotosPro}
                   isClient={isClient}
-                  onAdd={(urls) => addGalleryPhotos("fotospro", null, urls)}
-                  onRemove={(idx) => removeGalleryPhoto("fotospro", null, idx)}
+                  onAdd={(urls) => handleAddGalleryPhotos("fotospro", null, urls)}
+                  onRemove={(idx) => handleRemoveGalleryPhoto("fotospro", null, idx)}
                 />
               </div>
             )}
-            {view === "videos" && <div className="deliv-view active section-card"><Videos items={state.items} isClient={isClient} onEdit={openModal} /></div>}
+            {view === "videos" && <div className="deliv-view active section-card"><Videos items={bundle.items} isClient={isClient} onEdit={openModal} /></div>}
           </div>
         </div>
       </div>
@@ -273,12 +362,9 @@ export default function App() {
       <PlanViewer open={planOpen} onClose={() => setPlanOpen(false)} />
       <AccessModal
         open={accessOpen}
-        accesses={state.accesses}
+        accesses={bundle.accesses}
         onClose={() => setAccessOpen(false)}
-        onSave={(accesses) => {
-          setState((s) => ({ ...s, accesses }));
-          setAccessOpen(false);
-        }}
+        onSave={handleSaveAccesses}
       />
       <ContentModal
         open={modalOpen}

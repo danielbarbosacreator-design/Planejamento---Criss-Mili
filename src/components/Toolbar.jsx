@@ -1,6 +1,6 @@
 const OPTS = [["all", "Todos"], ["instagram", "Instagram"], ["facebook", "Facebook"], ["whatsapp", "Comunidade WhatsApp"], ["site", "Site"]];
 
-export default function Toolbar({ activeFilter, onFilterChange, onReset, onAdd, isClient }) {
+export default function Toolbar({ activeFilter, onFilterChange, onAdd, isClient }) {
   return (
     <div className="toolbar">
       <div className="filters">
@@ -16,10 +16,7 @@ export default function Toolbar({ activeFilter, onFilterChange, onReset, onAdd, 
       </div>
       <div className="spacer"></div>
       {!isClient && (
-        <>
-          <button className="btn btn-ghost team-only" onClick={onReset}>Restaurar plano padrão</button>
-          <button className="btn btn-primary team-only" onClick={onAdd}>+ Novo conteúdo</button>
-        </>
+        <button className="btn btn-primary team-only" onClick={onAdd}>+ Novo conteúdo</button>
       )}
     </div>
   );

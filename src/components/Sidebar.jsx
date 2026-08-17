@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ELECTION_DATE, NAV_ITEMS } from "../data.js";
+import { NAV_ITEMS } from "../data.js";
+import { readFileAsDataURL } from "../utils.js";
 
 const ICONS = {
   dashboard: <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>,
@@ -11,57 +12,74 @@ const ICONS = {
   videos: <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
 };
 
-function useCountdown() {
-  const [diff, setDiff] = useState(() => Math.ceil((ELECTION_DATE - new Date()) / (1000 * 60 * 60 * 24)));
+function useCountdown(endDate) {
+  const target = endDate ? new Date(endDate + "T00:00:00") : null;
+  const [diff, setDiff] = useState(() => (target ? Math.ceil((target - new Date()) / (1000 * 60 * 60 * 24)) : null));
   useEffect(() => {
+    if (!target) return;
     const timer = setInterval(() => {
-      setDiff(Math.ceil((ELECTION_DATE - new Date()) / (1000 * 60 * 60 * 24)));
+      setDiff(Math.ceil((target - new Date()) / (1000 * 60 * 60 * 24)));
     }, 1000 * 60 * 60);
     return () => clearInterval(timer);
-  }, []);
+  }, [endDate]);
   return diff;
 }
 
+function initials(name) {
+  if (!name) return "?";
+  return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+}
+
 export default function Sidebar({
+  campaign,
+  photo,
+  onPhotoChange,
   view,
-  navigate,
+  onNavigate,
   onOpenPlan,
   onOpenAccess,
-  currentUser,
-  isClient,
   onLogout,
-  mobileMenuOpen,
-  onCloseMobile
+  mobileOpen,
+  onCloseMobile,
 }) {
-  const diff = useCountdown();
+  const diff = useCountdown(campaign?.end_date);
+
+  async function handlePhoto(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    onPhotoChange(await readFileAsDataURL(file));
+    e.target.value = "";
+  }
 
   return (
     <>
-      <div className={`sidebar-overlay ${mobileMenuOpen ? "show" : ""}`} onClick={onCloseMobile}></div>
-      <aside className={`sidebar ${mobileMenuOpen ? "open" : ""}`} style={{ padding: "24px 20px" }}>
-        
+      <div className={`sidebar-overlay ${mobileOpen ? "show" : ""}`} onClick={onCloseMobile}></div>
+      <aside className={`sidebar ${mobileOpen ? "open" : ""}`} style={{ padding: "24px 20px" }}>
+
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#F97316", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16 }}>
-            CM
-          </div>
+          <label style={{ width: 40, height: 40, borderRadius: "50%", background: "#F97316", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16, overflow: "hidden", cursor: "pointer", flex: "none" }}>
+            {photo ? <img src={photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials(campaign?.candidate_name)}
+            <input type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhoto} />
+          </label>
           <div>
-            <div className="sidebar-brand-name" style={{ fontSize: 14, fontWeight: 700 }}>Cris Millis</div>
-            <div className="sidebar-brand-role" style={{ fontSize: 10 }}>Dep. Estadual SC • Partido Novo</div>
+            <div className="sidebar-brand-name" style={{ fontSize: 14, fontWeight: 700 }}>{campaign?.candidate_name || "Campanha"}</div>
+            <div className="sidebar-brand-role" style={{ fontSize: 10 }}>{[campaign?.office, campaign?.party].filter(Boolean).join(" • ")}</div>
           </div>
         </div>
 
-        <div className="sidebar-countdown">
-          <div className="countdown">{diff}</div>
-          <div className="countdown-label">DIAS PARA O 1º TURNO</div>
-          <div style={{ fontSize: 11, color: "#6B7280", fontWeight: 600, marginTop: 4 }}>04/10/2026</div>
-        </div>
+        {diff !== null && (
+          <div className="sidebar-countdown">
+            <div className="countdown">{diff}</div>
+            <div className="countdown-label">DIAS PARA O 1º TURNO</div>
+          </div>
+        )}
 
         <nav className="sidebar-nav">
           {NAV_ITEMS.map((item) => (
             <button
               key={item.id}
               className={"sidebar-link" + (view === item.id ? " active" : "")}
-              onClick={() => { navigate(item.id); onCloseMobile(); }}
+              onClick={() => { onNavigate(item.id); onCloseMobile(); }}
               style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", width: "100%", background: view === item.id ? "#1F242C" : "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
             >
               <span style={{ display: "flex", color: view === item.id ? "white" : "#8B949E" }}>{ICONS[item.id] || item.icon}</span>
