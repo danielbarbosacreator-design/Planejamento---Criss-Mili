@@ -19,6 +19,7 @@ import Planejamento from "./components/views/Planejamento.jsx";
 import Redes from "./components/views/Redes.jsx";
 import Site from "./components/views/Site.jsx";
 import Videos from "./components/views/Videos.jsx";
+import Documentos from "./components/views/Documentos.jsx";
 
 function FullScreenMessage({ title, children }) {
   return (
@@ -238,7 +239,7 @@ export default function App() {
           onLogout={handleLogout}
           view={view}
           onNavigate={(v) => (v === "dashboard" ? goToDashboard() : goToView(v))}
-          onOpenPlan={() => setPlanOpen(true)}
+          onOpenPlan={() => goToView("documentos")}
           onOpenAccess={() => setAccessOpen(true)}
           mobileOpen={mobileNavOpen}
           onCloseMobile={() => setMobileNavOpen(false)}
@@ -306,6 +307,7 @@ export default function App() {
               </div>
             )}
             {view === "videos" && <div className="deliv-view active section-card"><Videos items={bundle.items} isClient={isClient} onEdit={openModal} /></div>}
+            {view === "documentos" && <div className="deliv-view active section-card"><Documentos onOpenOriginalPlan={() => setPlanOpen(true)} /></div>}
           </div>
         </div>
       </div>
