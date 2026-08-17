@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { PHASES } from "../data.js";
+import { todayIso } from "../utils.js";
 
 const WEEKDAY_HEAD = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MONTH_NAMES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-const TODAY_ISO = new Date().toISOString().slice(0, 10);
+const TODAY_ISO = todayIso();
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -33,8 +34,9 @@ function EventChip({ item, isClient, onEdit, onCycleStatus, onCycleApproval, sho
       <button
         type="button"
         className={"cal-event-dot st-" + item.status}
-        title={"Status: " + item.status + " (clique para avançar)"}
+        title={"Status: " + item.status + (isClient ? "" : " (clique para avançar)")}
         onClick={(e) => { e.stopPropagation(); onCycleStatus(item.id); }}
+        disabled={isClient}
       ></button>
       <button type="button" className="cal-event-title" onClick={() => onEdit(item.id)} title={item.title}>
         {item.title}

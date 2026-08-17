@@ -3,7 +3,7 @@ import { useState } from "react";
 const FEATURES = [
   ["🗓️", "Acompanhar o calendário de conteúdo de toda a campanha, semana a semana"],
   ["✅", "Aprovar ou reprovar posts e vídeos antes de irem ao ar"],
-  ["📄", "Consultar o plano estratégico e os entregáveis contratados"],
+  ["📄", "Consultar o plano estratégico da campanha"],
   ["📸", "Ver os bancos de fotos (IA e profissional) e o roteiro dos vídeos"],
 ];
 
@@ -21,7 +21,6 @@ export default function LoginScreen({ onLogin }) {
     <div id="loginScreen">
       <div className="login-card">
         <div className="login-intro">
-          <div className="login-avatar">CM</div>
           <h1>Sistema de Gestão de Campanha</h1>
           <div className="login-lede">Cris Millis — Pré-candidata a Deputada Estadual SC · Partido Novo · São Francisco do Sul. Um só lugar pra equipe e candidata acompanharem tudo o que está acontecendo na campanha.</div>
           <ul className="login-features">
@@ -41,27 +40,11 @@ export default function LoginScreen({ onLogin }) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
-              placeholder="Ex: Cris Millis"
+              placeholder="Cris Millis"
               autoFocus
             />
           </div>
-          <div className="form-row">
-            <label>Você é</label>
-            <div className="role-options">
-              <div
-                className={"role-opt" + (role === "equipe" ? " selected" : "")}
-                onClick={() => setRole("equipe")}
-              >
-                Equipe (edita tudo)
-              </div>
-              <div
-                className={"role-opt" + (role === "cliente" ? " selected" : "")}
-                onClick={() => setRole("cliente")}
-              >
-                Cliente (aprova/reprova)
-              </div>
-            </div>
-          </div>
+
           <button className="btn btn-primary login-btn" onClick={submit}>Entrar no painel</button>
         </div>
       </div>

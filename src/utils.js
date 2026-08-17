@@ -5,6 +5,13 @@ export function fmtDate(iso) {
   return { day: d.getDate(), month: MONTHS[d.getMonth()], weekday: WEEKDAYS[d.getDay()] };
 }
 
+// Local calendar date, not UTC — toISOString() rolls to the next day in the evening for timezones west of UTC (e.g. Brazil).
+export function todayIso() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export function statusLabel(s) {
   return s === "planejado" ? "Planejado" : s === "producao" ? "Em produção" : "Publicado";
 }

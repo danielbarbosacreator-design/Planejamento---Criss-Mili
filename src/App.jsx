@@ -89,6 +89,10 @@ export default function App() {
     if (currentUser) patch.approvedBy = currentUser.name;
     updateItem(id, patch);
   }
+  function handleLogout() {
+    localStorage.removeItem(USER_KEY);
+    setCurrentUser(null);
+  }
   function openModal(id) {
     setEditingId(id);
     setNewItemDate(null);
@@ -170,10 +174,7 @@ export default function App() {
           photo={state.photo}
           onPhotoChange={(dataUrl) => setState((s) => ({ ...s, photo: dataUrl }))}
           currentUser={currentUser}
-          onLogout={() => {
-            localStorage.removeItem(USER_KEY);
-            setCurrentUser(null);
-          }}
+          onLogout={handleLogout}
           view={view}
           onNavigate={(v) => (v === "dashboard" ? goToDashboard() : goToView(v))}
           onOpenPlan={() => setPlanOpen(true)}
@@ -183,44 +184,53 @@ export default function App() {
         />
 
         <div className="app-main">
-          <TopBar currentUser={currentUser} onMobileMenu={() => setMobileNavOpen(true)} />
+          <TopBar
+            currentUser={currentUser}
+            isClient={isClient}
+            items={state.items}
+            onMobileMenu={() => setMobileNavOpen(true)}
+            onOpenItem={openModal}
+            onLogout={handleLogout}
+          />
 
           <div className="app-main-inner">
             {view === "dashboard" && (
               <div id="view-dashboard" className="active">
-                <div className="dashboard-greeting">
-                  <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: "0 0 6px" }}>Overview</h1>
-                  <p style={{ color: "#6B7280", margin: 0, fontSize: 13 }}>Painel de acompanhamento e planejamento da campanha.</p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "24px" }}>
+                  <div className="dashboard-greeting">
+                    <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: "0 0 6px" }}>Overview</h1>
+                    <p style={{ color: "#6B7280", margin: 0, fontSize: 13 }}>Painel de acompanhamento e planejamento da campanha.</p>
+                  </div>
+                  <button className="btn-ghost" style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 8, padding: "8px 12px", background: "white", border: "1px solid #E5E7EB", fontSize: 12, fontWeight: 600 }}>
+                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" strokeWidth="2" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    16 AGO - 4 OUT, 2026
+                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" strokeWidth="2" fill="none"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </button>
                 </div>
 
-                <div className="dash-col-main">
-                  <div className="section-card" style={{ padding: "24px" }}>
-                    <div className="clean-title">Progresso da Campanha</div>
-                    <PhaseBar />
-                  </div>
+                <div className="section-card" style={{ padding: "24px", marginBottom: "20px" }}>
+                  <div className="clean-title" style={{ fontSize: 10, color: "#9CA3AF", letterSpacing: "1px", marginBottom: 20 }}>PROGRESSO DA CAMPANHA</div>
+                  <PhaseBar />
+                </div>
 
-                  <div className="stats-row">
-                    <Stats items={state.items} />
-                  </div>
+                <div className="stats-row" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px", marginBottom: "20px" }}>
+                  <Stats items={state.items} />
                 </div>
 
                 <div className="section-card" style={{ padding: "24px", marginTop: "20px" }}>
-                  <div className="clean-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span>Calendário de conteúdo</span>
-                    <Toolbar
-                      activeFilter={activeFilter}
-                      onFilterChange={setActiveFilter}
-                      onReset={resetPlan}
-                      onAdd={() => openModal(null)}
-                      isClient={isClient}
-                    />
-                  </div>
+                  <div className="clean-title" style={{ fontSize: 10, color: "#9CA3AF", letterSpacing: "1px", marginBottom: 20 }}>CALENDÁRIO DE CONTEÚDO</div>
+                  <Toolbar
+                    activeFilter={activeFilter}
+                    onFilterChange={setActiveFilter}
+                    onReset={resetPlan}
+                    onAdd={() => openModal(null)}
+                    isClient={isClient}
+                  />
                   <Calendar
                     items={state.items}
                     activeFilter={activeFilter}
                     isClient={isClient}
                     onEdit={openModal}
-                    onAddOnDate={openModalForDate}
                     onCycleStatus={cycleStatus}
                     onCycleApproval={cycleApproval}
                   />
